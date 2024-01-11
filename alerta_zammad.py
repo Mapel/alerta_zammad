@@ -47,10 +47,12 @@ class TriggerEvent(PluginBase):
             }
         }
         
+        headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
+
         LOG.debug('Zammad Payload: %s', payload)
 
         try:
-            r = requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, timeout=2)
+            r = requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=headers, timeout=2)
         except Exception as e:
             raise RuntimeError('Zammad connection error: %s' % e)
         LOG.debug('Zammad response: {} - {}'.format(r.status_code, r.text))
@@ -74,10 +76,12 @@ class TriggerEvent(PluginBase):
             }
         }
         
+        headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
+
         LOG.debug('Zammad Payload: %s', payload)
 
         try:
-            r = requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, timeout=2)
+            r = requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=headers, timeout=2)
         except Exception as e:
             raise RuntimeError('Zammad connection error: %s' % e)
         LOG.debug('Zammad response: {} - {}'.format(r.status_code, r.text))
