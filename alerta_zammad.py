@@ -38,6 +38,7 @@ class TriggerEvent(PluginBase):
 
         payload = {
             'title': message,
+            'group': 'Users',
             'customer': ZAMMAD_CUSTOMER_MAIL,
             'article': {
                 'subject': "Alerta alert!",
@@ -67,6 +68,7 @@ class TriggerEvent(PluginBase):
 
         payload = {
             'title': message,
+            'group': 'Users',
             'customer': ZAMMAD_CUSTOMER_MAIL,
             'article': {
                 'subject': "Alerta alert!",
