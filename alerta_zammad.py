@@ -98,7 +98,7 @@ class TriggerEvent(PluginBase):
         LOG.debug('Zammad Payload: %s', payload)
 
         try:
-            r = requests.put(ZAMMAD_URL+"/api/v1/tickets/"+alert.attributes["Ticket_ID"], json=payload, headers=headers, timeout=2)
+            r = requests.put(ZAMMAD_URL+"/api/v1/tickets/"+alert.attributes["ticketid"], json=payload, headers=headers, timeout=2)
         except Exception as e:
             raise RuntimeError('Zammad connection error: %s' % e)
         LOG.debug('Zammad response: {} - {}'.format(r.status_code, r.text))
