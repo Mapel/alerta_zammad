@@ -63,13 +63,13 @@ class TriggerEvent(PluginBase):
         if r.status_code == 201:
             jsonResponse = r.json()
             alertAttributes = alert.attributes
-            alertAttributes["Ticket_ID"] = jsonResponse["id"]
+            alertAttributes["ticketid"] = jsonResponse["id"]
             alert.update_attributes(alertAttributes)
 
         return
 
     def status_change(self, alert, status, text, **kwargs):
-        if "Ticket_ID" not in alert.attributes.keys:
+        if "ticketid" not in alert.attributes.keys():
             return
         
         headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
