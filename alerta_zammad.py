@@ -34,6 +34,10 @@ class TriggerEvent(PluginBase):
         if alert.repeat:
             return
 
+        #dont open new ticket
+        if "ticketid" in alert.attributes.keys():
+            return
+        
         message = '{} alert for {} - {}'.format(
             alert.severity.capitalize(), ','.join(alert.service), alert.resource)
 
