@@ -1,7 +1,7 @@
 import logging
 import os
-
 import json
+
 import requests
 # from alerta.exceptions import RejectException
 from alerta.plugins import PluginBase

@@ -13,8 +13,7 @@ setup(
     packages=find_packages(),
     py_modules=['alerta_zammad'],
     install_requires=[
-        'requests',
-        'json'
+        'requests'
     ],
     include_package_data=True,
     zip_safe=True,
