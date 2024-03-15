@@ -16,7 +16,7 @@ LOG = logging.getLogger('alerta.plugins')
 ZAMMAD_URL = os.environ.get('ZAMMAD_URL') or app.config['ZAMMAD_URL']
 ZAMMAD_API_TOKEN = os.environ.get('ZAMMAD_API_TOKEN') or app.config['ZAMMAD_API_TOKEN']
 ZAMMAD_CUSTOMER_MAIL = os.environ.get('ZAMMAD_CUSTOMER_MAIL') or app.config['ZAMMAD_CUSTOMER_MAIL']
-
+ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_MIN_SEVERITY') or app.config['ZAMMAD_MIN_SEVERITY'] or 'security,critical,major'
 
 class TriggerEvent(PluginBase):
 
@@ -34,10 +34,13 @@ class TriggerEvent(PluginBase):
         if alert.repeat:
             return
 
+        if not alert.severity in ZAMMAD_ALLOWED_SEVERITIES.lower().split(","):
+            return
+
         #dont open new ticket
         if "ticketid" in alert.attributes.keys():
             return
-        
+
         message = '{} alert for {} - {}'.format(
             alert.severity.capitalize(), ','.join(alert.service), alert.resource)
 
@@ -52,7 +55,7 @@ class TriggerEvent(PluginBase):
                 "internal": False
             }
         }
-        
+
         headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
 
         LOG.debug('Zammad Payload: %s', payload)
@@ -61,7 +64,7 @@ class TriggerEvent(PluginBase):
             r = requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=headers, timeout=2)
         except Exception as e:
             raise RuntimeError('Zammad connection error: %s' % e)
-        
+
         LOG.debug('Zammad response: {} - {}'.format(r.status_code, r.text))
 
         if r.status_code == 201:
@@ -75,11 +78,13 @@ class TriggerEvent(PluginBase):
     def status_change(self, alert, status, text, **kwargs):
         if "ticketid" not in alert.attributes.keys():
             return
-        
+
         headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
-        
+
         if status == "closed":
             state = "closed"
+        elif not alert.severity in ZAMMAD_ALLOWED_SEVERITIES.lower().split(","):
+            return
         else:
             state = "open"
 
@@ -93,11 +98,11 @@ class TriggerEvent(PluginBase):
             'customer': ZAMMAD_CUSTOMER_MAIL,
             'article': {
                 'subject': "Alert Update",
-                'body': json.dumps(alert.get_body(history=False), indent=4),
+                'body': json.dumps(alert.get_body(history=False).pop("rawData", None), indent=4),
                 "type": "note",
                 "internal": False
             }
-        } 
+        }
 
         LOG.debug('Zammad Payload: %s', payload)
 
