@@ -32,7 +32,7 @@ PLUGINS = ['zammad']
 ZAMMAD_URL = ''  # default="Not configured"
 ZAMMAD_API_TOKEN = '' # default="Not Set"
 ZAMMAD_CUSTOMER_MAIL = '' # default="Not Set"
-ZAMMAD_ALLOWED_SEVERITIES = 'security,critical,major' # comma seperated list of allowed severity to (re)open / default: 'security,critical,major'
+ZAMMAD_ALLOWED_SEVERITIES = 'security,critical,major' # list of allowed severity to (re)open / default: 'security,critical,major'
 ```
 
 

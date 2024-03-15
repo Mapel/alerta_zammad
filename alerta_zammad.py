@@ -34,7 +34,7 @@ class TriggerEvent(PluginBase):
         if alert.repeat:
             return
 
-        if not alert.severity in ZAMMAD_ALLOWED_SEVERITIES.lower().split(","):
+        if alert.severity.casefold() not in ZAMMAD_ALLOWED_SEVERITIES.casefold():
             return
 
         #dont open new ticket
@@ -83,7 +83,7 @@ class TriggerEvent(PluginBase):
 
         if status == "closed":
             state = "closed"
-        elif not alert.severity in ZAMMAD_ALLOWED_SEVERITIES.lower().split(","):
+        elif alert.severity.casefold() not in ZAMMAD_ALLOWED_SEVERITIES.casefold():
             return
         else:
             state = "open"
