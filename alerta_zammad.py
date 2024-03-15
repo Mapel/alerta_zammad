@@ -34,11 +34,13 @@ class TriggerEvent(PluginBase):
         if alert.repeat:
             return
 
+        LOG.info("Alert Severity is: "+ alert.severity + "| Allowed severities is: " + ZAMMAD_ALLOWED_SEVERITIES)
         if alert.severity.casefold() not in ZAMMAD_ALLOWED_SEVERITIES.casefold():
             return
 
         #dont open new ticket
         if "ticketid" in alert.attributes.keys():
+            LOG.debug("Ticketid is already set -> no new ticket!")
             return
 
         message = '{} alert for {} - {}'.format(
