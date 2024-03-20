@@ -45,7 +45,7 @@ class TriggerEvent(PluginBase):
             return
 
         LOG.debug("Post_Receive: Alert Severity is: "+ alert.severity + "| Allowed severities is: " + ZAMMAD_ALLOWED_SEVERITIES)
-        if not TriggerEvent.checkAllowedSeverity(alert.serverity):
+        if not TriggerEvent.checkAllowedSeverity(alert.severity):
             return
 
         #dont open new ticket
