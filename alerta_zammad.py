@@ -20,11 +20,7 @@ ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_ALLOWED_SEVERITIES') or app.c
 
 class TriggerEvent(PluginBase):
 
-    prevAlertSeverity = ""
-
     def pre_receive(self, alert, **kwargs):
-        self.prevAlertSeverity = alert.severity  
-        LOG.debug("Pre-Receive Alert Severity is: " + alert.severity)
         return alert
 
     @staticmethod
@@ -97,14 +93,14 @@ class TriggerEvent(PluginBase):
             LOG.debug("Alert has no ticketid -> exiting")
             return
 
-        LOG.debug("Status_Change: Current Alert Severity is: " + alert.severity + " - previous Alert Severity was: " + self.prevAlertSeverity)
+        LOG.debug("Status_Change: Current Alert Severity is: " + alert.severity + " - previous Alert Severity was: " + alert.previous_severity)
         if status == "closed" or self.checkCleardStatus(alert.severity):
             state = "closed"
-        elif not TriggerEvent.checkAllowedSeverity(alert.serverity) or not TriggerEvent.checkAllowedSeverity(self.prevAlertSeverity):
+        elif not TriggerEvent.checkAllowedSeverity(alert.severity) or not TriggerEvent.checkAllowedSeverity(alert.previous_severity):
             return
         else:
             state = "open"
-
+        
         headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
 
         message = '{} alert for {} - {}'.format(
