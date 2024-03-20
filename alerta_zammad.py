@@ -93,16 +93,15 @@ class TriggerEvent(PluginBase):
         if "ticketid" not in alert.attributes.keys():
             return
 
-        headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
-
         LOG.debug("Current Alert Severity is: " + alert.severity + " - previous Alert Severity was: " + self.prevAlertSeverity)
-        if not TriggerEvent.checkAllowedSeverity(alert.serverity) or not TriggerEvent.checkAllowedSeverity(self.prevAlertSeverity):
-            return
-
         if status == "closed" or self.checkCleardStatus(alert.severity):
             state = "closed"
+        elif not TriggerEvent.checkAllowedSeverity(alert.serverity) or not TriggerEvent.checkAllowedSeverity(self.prevAlertSeverity):
+            return
         else:
             state = "open"
+
+        headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
 
         message = '{} alert for {} - {}'.format(
             alert.severity.capitalize(), ','.join(alert.service), alert.resource)
