@@ -34,7 +34,7 @@ class TriggerEvent(PluginBase):
         if alert.repeat:
             return
 
-        LOG.warning("Alert Severity is: "+ alert.severity + "| Allowed severities is: " + ZAMMAD_ALLOWED_SEVERITIES)
+        LOG.debug("Alert Severity is: "+ alert.severity + "| Allowed severities is: " + ZAMMAD_ALLOWED_SEVERITIES)
         if alert.severity.casefold() not in ZAMMAD_ALLOWED_SEVERITIES.casefold():
             return
 
