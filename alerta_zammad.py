@@ -15,6 +15,7 @@ LOG = logging.getLogger('alerta.plugins')
 
 ZAMMAD_URL = os.environ.get('ZAMMAD_URL') or app.config['ZAMMAD_URL']
 ZAMMAD_API_TOKEN = os.environ.get('ZAMMAD_API_TOKEN') or app.config['ZAMMAD_API_TOKEN']
+AUTH_HEADER = {'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
 ZAMMAD_CUSTOMER_MAIL = os.environ.get('ZAMMAD_CUSTOMER_MAIL') or app.config['ZAMMAD_CUSTOMER_MAIL']
 ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_ALLOWED_SEVERITIES') or app.config['ZAMMAD_ALLOWED_SEVERITIES'] or 'security,critical,major'
 
@@ -22,13 +23,6 @@ class TriggerEvent(PluginBase):
 
     def pre_receive(self, alert, **kwargs):
         return alert
-
-    @staticmethod
-    def _event_type(severity):
-        if TriggerEvent.checkCleardStatus(severity):    
-            return 'closed'
-        else:
-            return 'open'
     
     @staticmethod
     def checkCleardStatus(severity):
@@ -37,6 +31,40 @@ class TriggerEvent(PluginBase):
     @staticmethod
     def checkAllowedSeverity(severity):
         return severity.casefold() in ZAMMAD_ALLOWED_SEVERITIES.casefold()
+
+    @staticmethod
+    def createPayload(alert, state):
+        message = '{} alert for {} - {}'.format(
+           alert.severity.capitalize(), ','.join(alert.service), alert.resource)
+
+        payload = {
+            'title': message,
+            'group': 'Users',
+            'customer': ZAMMAD_CUSTOMER_MAIL,
+            'article': {
+                'subject': "Alerta alert!",
+                'body': json.dumps(alert.get_body(history=False).pop("rawData", None), indent=4),
+                "type": "note",
+                "internal": False
+            }
+        }
+
+        if state:
+            payload['state'] = state
+
+        return payload
+    
+    def createTicket(payload):
+        try:
+            return requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=AUTH_HEADER, timeout=2)
+        except Exception as e:
+            raise RuntimeError('Zammad connection error: %s' % e)
+
+    def updateTicket(alert, payload):
+        try:
+            return requests.put(ZAMMAD_URL+"/api/v1/tickets/"+ str(alert.attributes["ticketid"]), json=payload, headers=AUTH_HEADER, timeout=2)
+        except Exception as e:
+            raise RuntimeError('Zammad connection error: %s' % e) 
 
     def post_receive(self, alert, **kwargs):
         LOG.debug("Post_Receive for alert.id: " + alert.id)
@@ -62,7 +90,7 @@ class TriggerEvent(PluginBase):
             'customer': ZAMMAD_CUSTOMER_MAIL,
             'article': {
                 'subject': "Alerta alert!",
-                'body': json.dumps(alert.get_body(history=False), indent=4),
+                'body': json.dumps(alert.get_body(history=False).pop("rawData", None), indent=4),
                 "type": "note",
                 "internal": False
             }
