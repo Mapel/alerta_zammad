@@ -20,22 +20,34 @@ ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_ALLOWED_SEVERITIES') or app.c
 
 class TriggerEvent(PluginBase):
 
+    prevAlertSeverity = ""
+
     def pre_receive(self, alert, **kwargs):
+        self.prevAlertSeverity = alert.severity  
+        LOG.debug("Previous Alert Severity is: " + alert.severity)
         return alert
 
     @staticmethod
     def _event_type(severity):
-        if severity in ['cleared', 'normal', 'ok']:
-            return 'close'
+        if TriggerEvent.checkCleardStatus(severity):    
+            return 'closed'
         else:
             return 'open'
+    
+    @staticmethod
+    def checkCleardStatus(severity):
+        return severity.casefold() in ['cleared', 'normal', 'ok']
+
+    @staticmethod
+    def checkAllowedSeverity(severity):
+        return severity.casefold() in ZAMMAD_ALLOWED_SEVERITIES.casefold()
 
     def post_receive(self, alert, **kwargs):
         if alert.repeat:
             return
 
         LOG.debug("Alert Severity is: "+ alert.severity + "| Allowed severities is: " + ZAMMAD_ALLOWED_SEVERITIES)
-        if alert.severity.casefold() not in ZAMMAD_ALLOWED_SEVERITIES.casefold():
+        if not TriggerEvent.checkAllowedSeverity(alert.serverity):
             return
 
         #dont open new ticket
@@ -83,10 +95,12 @@ class TriggerEvent(PluginBase):
 
         headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
 
-        if status == "closed":
-            state = "closed"
-        elif alert.severity.casefold() not in ZAMMAD_ALLOWED_SEVERITIES.casefold():
+        LOG.debug("Current Alert Severity is: " + alert.severity + " - previous Alert Severity was: " + self.prevAlertSeverity)
+        if not TriggerEvent.checkAllowedSeverity(alert.serverity) or not TriggerEvent.checkAllowedSeverity(self.prevAlertSeverity):
             return
+
+        if status == "closed" or self.checkCleardStatus(alert.severity):
+            state = "closed"
         else:
             state = "open"
 
