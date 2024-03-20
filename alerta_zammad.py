@@ -16,7 +16,7 @@ LOG = logging.getLogger('alerta.plugins')
 ZAMMAD_URL = os.environ.get('ZAMMAD_URL') or app.config['ZAMMAD_URL']
 ZAMMAD_API_TOKEN = os.environ.get('ZAMMAD_API_TOKEN') or app.config['ZAMMAD_API_TOKEN']
 ZAMMAD_CUSTOMER_MAIL = os.environ.get('ZAMMAD_CUSTOMER_MAIL') or app.config['ZAMMAD_CUSTOMER_MAIL']
-ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_MIN_SEVERITY') or app.config['ZAMMAD_MIN_SEVERITY'] or 'security,critical,major'
+ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_ALLOWED_SEVERITIES') or app.config['ZAMMAD_ALLOWED_SEVERITIES'] or 'security,critical,major'
 
 class TriggerEvent(PluginBase):
 
