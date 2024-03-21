@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-version = '0.2.8'
+version = '0.3.0'
 
 setup(
     name='alerta-zammad',

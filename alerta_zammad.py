@@ -33,7 +33,7 @@ class TriggerEvent(PluginBase):
         return severity.casefold() in ZAMMAD_ALLOWED_SEVERITIES.casefold()
 
     @staticmethod
-    def createPayload(alert, state):
+    def createPayload(alert, state=""):
         message = '{} alert for {} - {}'.format(
            alert.severity.capitalize(), ','.join(alert.service), alert.resource)
 
@@ -54,12 +54,14 @@ class TriggerEvent(PluginBase):
 
         return payload
     
+    @staticmethod
     def createTicket(payload):
         try:
             return requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=AUTH_HEADER, timeout=2)
         except Exception as e:
             raise RuntimeError('Zammad connection error: %s' % e)
 
+    @staticmethod
     def updateTicket(alert, payload):
         try:
             return requests.put(ZAMMAD_URL+"/api/v1/tickets/"+ str(alert.attributes["ticketid"]), json=payload, headers=AUTH_HEADER, timeout=2)
@@ -72,47 +74,37 @@ class TriggerEvent(PluginBase):
             LOG.debug("Post_Receive: Alert was repeated -> exit" )
             return
 
-        LOG.debug("Post_Receive: Alert Severity is: "+ alert.severity + "| Allowed severities is: " + ZAMMAD_ALLOWED_SEVERITIES)
-        if not TriggerEvent.checkAllowedSeverity(alert.severity):
+        hasTicketId = "ticketid" in alert.attributes.keys()
+
+        overThreshold = TriggerEvent.checkAllowedSeverity(alert.severity)
+
+        deescalation = not overThreshold and TriggerEvent.checkAllowedSeverity(alert.previous_severity)
+
+        if not (overThreshold or deescalation):
             return
+        elif deescalation:
+            state = "closed"
+        elif hasTicketId:
+            state = "open"
+        else:
+            state = ""
 
-        #dont open new ticket
-        if "ticketid" in alert.attributes.keys():
-            LOG.debug("Post_Receive: Ticketid is already set -> no new ticket!")
-            return
-
-        message = '{} alert for {} - {}'.format(
-            alert.severity.capitalize(), ','.join(alert.service), alert.resource)
-
-        payload = {
-            'title': message,
-            'group': 'Users',
-            'customer': ZAMMAD_CUSTOMER_MAIL,
-            'article': {
-                'subject': "Alerta alert!",
-                'body': json.dumps(alert.get_body(history=False).pop("rawData", None), indent=4),
-                "type": "note",
-                "internal": False
-            }
-        }
-
-        headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
+        payload = self.createPayload(alert, state)
 
         LOG.debug('Post_Receive: Zammad Payload: %s', payload)
 
-        try:
-            r = requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=headers, timeout=2)
-        except Exception as e:
-            raise RuntimeError('Zammad connection error: %s' % e)
+        if hasTicketId:
+            r = TriggerEvent.updateTicket(alert, payload)
+        else:
+            r = TriggerEvent.createTicket(payload)
 
         LOG.debug('Post_Receive: Zammad response: {} - {}'.format(r.status_code, r.text))
 
-        if r.status_code == 201:
+        if r.status_code == 201 and not hasTicketId:
             jsonResponse = r.json()
             alertAttributes = alert.attributes
             alertAttributes["ticketid"] = jsonResponse["id"]
             alert.update_attributes(alertAttributes)
-
         return
 
     def status_change(self, alert, status, text, **kwargs):
@@ -120,37 +112,16 @@ class TriggerEvent(PluginBase):
         if "ticketid" not in alert.attributes.keys():
             LOG.debug("Alert has no ticketid -> exiting")
             return
-
-        LOG.debug("Status_Change: Current Alert Severity is: " + alert.severity + " - previous Alert Severity was: " + alert.previous_severity)
-        if status == "closed" or self.checkCleardStatus(alert.severity):
-            state = "closed"
-        elif not TriggerEvent.checkAllowedSeverity(alert.severity) or not TriggerEvent.checkAllowedSeverity(alert.previous_severity):
+        
+        if not TriggerEvent.checkAllowedSeverity(alert.severity):
+            LOG.debug("Alert Severity is not over Threshold!")
             return
+
+        if status == "closed":
+            state = "closed"
         else:
             state = "open"
         
-        headers={'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
+        r = TriggerEvent.updateTicket(alert, TriggerEvent.createPayload(alert, state) )
 
-        message = '{} alert for {} - {}'.format(
-            alert.severity.capitalize(), ','.join(alert.service), alert.resource)
-
-        payload = {
-            'title': message,
-            'group': 'Users',
-            "state": state,
-            'customer': ZAMMAD_CUSTOMER_MAIL,
-            'article': {
-                'subject': "Alert Update",
-                'body': json.dumps(alert.get_body(history=False).pop("rawData", None), indent=4),
-                "type": "note",
-                "internal": False
-            }
-        }
-
-        LOG.debug('Status_Change: Zammad Payload: %s', payload)
-
-        try:
-            r = requests.put(ZAMMAD_URL+"/api/v1/tickets/"+ str(alert.attributes["ticketid"]), json=payload, headers=headers, timeout=2)
-        except Exception as e:
-            raise RuntimeError('Zammad connection error: %s' % e)
         LOG.debug('Status_Change: Zammad response: {} - {}'.format(r.status_code, r.text))
