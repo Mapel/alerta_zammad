@@ -13,11 +13,11 @@ except ImportError:
 
 LOG = logging.getLogger('alerta.plugins')
 
-ZAMMAD_URL = os.environ.get('ZAMMAD_URL') or app.config['ZAMMAD_URL']
-ZAMMAD_API_TOKEN = os.environ.get('ZAMMAD_API_TOKEN') or app.config['ZAMMAD_API_TOKEN']
+ZAMMAD_URL = os.environ.get('ZAMMAD_URL') or app.config.get('ZAMMAD_URL') or "http://127.0.0.1:8080"
+ZAMMAD_API_TOKEN = os.environ.get('ZAMMAD_API_TOKEN') or app.config.get('ZAMMAD_API_TOKEN') or ""
 AUTH_HEADER = {'Authorization': 'Token token={}'.format(ZAMMAD_API_TOKEN)}
-ZAMMAD_CUSTOMER_MAIL = os.environ.get('ZAMMAD_CUSTOMER_MAIL') or app.config['ZAMMAD_CUSTOMER_MAIL']
-ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_ALLOWED_SEVERITIES') or app.config['ZAMMAD_ALLOWED_SEVERITIES'] or 'security,critical,major'
+ZAMMAD_CUSTOMER_MAIL = os.environ.get('ZAMMAD_CUSTOMER_MAIL') or app.config.get('ZAMMAD_CUSTOMER_MAIL') or "Test@test.com"
+ZAMMAD_ALLOWED_SEVERITIES = os.environ.get('ZAMMAD_ALLOWED_SEVERITIES') or app.config.get('ZAMMAD_ALLOWED_SEVERITIES') or "critical"
 
 class TriggerEvent(PluginBase):
 
@@ -25,17 +25,20 @@ class TriggerEvent(PluginBase):
         return alert
     
     @staticmethod
-    def checkCleardStatus(severity):
+    def checkCleardStatus(severity) -> bool:
         return severity.casefold() in ['cleared', 'normal', 'ok']
 
     @staticmethod
-    def checkAllowedSeverity(severity):
+    def checkAllowedSeverity(severity) -> bool:
         return severity.casefold() in ZAMMAD_ALLOWED_SEVERITIES.casefold()
 
     @staticmethod
-    def createPayload(alert, state=""):
+    def createPayload(alert, state="") -> dict[str, any]:
         message = '{} alert for {} - {}'.format(
            alert.severity.capitalize(), ','.join(alert.service), alert.resource)
+        
+        body = alert.get_body(history=False)
+        body.pop("rawData", None)
 
         payload = {
             'title': message,
@@ -43,7 +46,7 @@ class TriggerEvent(PluginBase):
             'customer': ZAMMAD_CUSTOMER_MAIL,
             'article': {
                 'subject': "Alerta alert!",
-                'body': json.dumps(alert.get_body(history=False).pop("rawData", None), indent=4),
+                'body': json.dumps(body, indent=4),
                 "type": "note",
                 "internal": False
             }
@@ -55,14 +58,14 @@ class TriggerEvent(PluginBase):
         return payload
     
     @staticmethod
-    def createTicket(payload):
+    def createTicket(payload) -> requests.Response:
         try:
             return requests.post(ZAMMAD_URL+"/api/v1/tickets", json=payload, headers=AUTH_HEADER, timeout=2)
         except Exception as e:
             raise RuntimeError('Zammad connection error: %s' % e)
 
     @staticmethod
-    def updateTicket(alert, payload):
+    def updateTicket(alert, payload) -> requests.Response:
         try:
             return requests.put(ZAMMAD_URL+"/api/v1/tickets/"+ str(alert.attributes["ticketid"]), json=payload, headers=AUTH_HEADER, timeout=2)
         except Exception as e:
@@ -89,7 +92,7 @@ class TriggerEvent(PluginBase):
         else:
             state = ""
 
-        payload = self.createPayload(alert, state)
+        payload = TriggerEvent.createPayload(alert, state)
 
         LOG.debug('Post_Receive: Zammad Payload: %s', payload)
 
